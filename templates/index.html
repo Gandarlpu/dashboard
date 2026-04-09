@@ -205,15 +205,21 @@ function renderTrades(trades) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">거래 내역 없음</td></tr>';
     return;
   }
-  tbody.innerHTML = trades.map(t => `
+  tbody.innerHTML = trades.map(t => {
+    const isUs = t.bot === '미장봇';
+    const pnlStr = isUs
+      ? `${t.pnl > 0 ? '+' : ''}$${Math.abs(t.pnl).toFixed(2)}`
+      : `${t.pnl > 0 ? '+' : ''}${t.pnl.toLocaleString()}원`;
+    return `
     <tr>
       <td>${t.bot}</td>
       <td>${t.ticker}</td>
-      <td class="${pnlClass(t.pnl)}">${t.pnl > 0 ? '+' : ''}${t.pnl}</td>
+      <td class="${pnlClass(t.pnl)}">${pnlStr}</td>
       <td class="${pnlClass(t.pnl_rate)}">${t.pnl_rate > 0 ? '+' : ''}${t.pnl_rate}%</td>
       <td><span class="badge ${t.result === 'win' ? 'badge-win' : 'badge-loss'}">${t.exit_reason}</span></td>
       <td>${t.exit_at?.slice(0, 16) || '-'}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 async function refresh() {
