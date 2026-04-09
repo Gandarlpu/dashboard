@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoTrader 대시보드</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #0f1117; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
+    .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; }
+    .card-header { background: #22253a; border-bottom: 1px solid #2a2d3a; border-radius: 12px 12px 0 0 !important; font-weight: 600; }
+    .status-on  { color: #4ade80; font-weight: 700; }
+    .status-off { color: #f87171; font-weight: 700; }
+    .pnl-pos { color: #4ade80; }
+    .pnl-neg { color: #f87171; }
+    .pnl-zero { color: #9ca3af; }
+    .badge-win  { background: #166534; color: #4ade80; }
+    .badge-loss { background: #7f1d1d; color: #f87171; }
+    .table { color: #e0e0e0; }
+    .table th { color: #9ca3af; font-size: 0.8rem; border-color: #2a2d3a; }
+    .table td { border-color: #2a2d3a; font-size: 0.88rem; }
+    .refresh-info { color: #6b7280; font-size: 0.8rem; }
+    h5.bot-name { font-size: 1.1rem; margin-bottom: 0; }
+    .stat-label { color: #9ca3af; font-size: 0.78rem; }
+    .stat-value { font-size: 1.1rem; font-weight: 600; }
+    .position-badge { background: #1e3a5f; color: #93c5fd; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div class="container-fluid py-4 px-4">
+
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">📊 AutoTrader 대시보드</h4>
+    <span class="refresh-info" id="lastUpdated">로딩 중...</span>
+  </div>
+
+  <!-- 봇 카드 3개 -->
+  <div class="row g-3 mb-4" id="botCards"></div>
+
+  <!-- 차트 2개 -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header">📈 누적 손익</div>
+        <div class="card-body"><canvas id="cumulativeChart" height="100"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">📅 어제 손익</div>
+        <div class="card-body"><canvas id="yesterdayChart" height="200"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최근 거래 내역 -->
+  <div class="card">
+    <div class="card-header">🕐 최근 거래 내역</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>봇</th><th>종목</th><th>손익</th><th>손익률</th><th>청산사유</th><th>시각</th>
+            </tr>
+          </thead>
+          <tbody id="tradeTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BOT_COLORS = { coin: '#f59e0b', stock: '#3b82f6', us: '#8b5cf6' };
+const BOT_KEYS   = ['coin', 'stock', 'us'];
+let cumulativeChart, yesterdayChart;
+
+function pnlClass(v) {
+  return v > 0 ? 'pnl-pos' : v < 0 ? 'pnl-neg' : 'pnl-zero';
+}
+function pnlStr(v, currency) {
+  const prefix = v > 0 ? '+' : '';
+  if (currency === 'usd') return `${prefix}$${v.toFixed(2)}`;
+  return `${prefix}${v.toLocaleString()}원`;
+}
+
+function renderCards(bots) {
+  const container = document.getElementById('botCards');
+  container.innerHTML = '';
+  BOT_KEYS.forEach(key => {
+    const b = bots[key];
+    const s = b.stats;
+    const currency = key === 'us' ? 'usd' : 'krw';
+    const posHtml = b.positions.length === 0
+      ? '<span class="text-muted" style="font-size:0.8rem">없음</span>'
+      : b.positions.map(p => `<span class="position-badge me-1">${p.ticker}</span>`).join('');
+
+    container.innerHTML += `
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="bot-name">${b.name}</h5>
+            <span class="${b.running ? 'status-on' : 'status-off'}">${b.running ? '● ON' : '● OFF'}</span>
+          </div>
+          <div class="card-body">
+            <div class="row text-center mb-3">
+              <div class="col-4">
+                <div class="stat-label">누적 손익</div>
+                <div class="stat-value ${pnlClass(s.total_pnl)}">${pnlStr(s.total_pnl, currency)}</div>
+              </div>
+              <div class="col-4">
+                <div class="stat-label">오늘 손익</div>
+                <div class="stat-value ${pnlClass(b.today_pnl)}">${pnlStr(b.today_pnl, currency)}</div>
+              </div>
+              <div class="col-4">
+                <div class="stat-label">승률</div>
+                <div class="stat-value">${s.win_rate}%</div>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center" style="font-size:0.82rem">
+              <span class="text-muted">총 ${s.total}회 (${s.win}승 ${s.loss}패)</span>
+            </div>
+            <div class="mt-2">
+              <span class="stat-label me-2">보유</span>${posHtml}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+function renderCumulativeChart(bots) {
+  // 모든 날짜 합집합
+  const dateSet = new Set();
+  BOT_KEYS.forEach(k => bots[k].cumulative.forEach(d => dateSet.add(d.date)));
+  const dates = [...dateSet].sort();
+
+  const datasets = BOT_KEYS.map(key => {
+    const map = {};
+    bots[key].cumulative.forEach(d => map[d.date] = d.pnl);
+    let last = 0;
+    const data = dates.map(d => { if (map[d] !== undefined) last = map[d]; return last; });
+    return {
+      label: bots[key].name,
+      data,
+      borderColor: BOT_COLORS[key],
+      backgroundColor: BOT_COLORS[key] + '22',
+      tension: 0.3,
+      fill: false,
+      pointRadius: 3,
+    };
+  });
+
+  if (cumulativeChart) cumulativeChart.destroy();
+  cumulativeChart = new Chart(document.getElementById('cumulativeChart'), {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e0e0e0' } } },
+      scales: {
+        x: { ticks: { color: '#9ca3af', maxTicksLimit: 10 }, grid: { color: '#2a2d3a' } },
+        y: { ticks: { color: '#9ca3af' }, grid: { color: '#2a2d3a' } },
+      },
+    },
+  });
+}
+
+function renderYesterdayChart(bots) {
+  const hours = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0'));
+  const datasets = BOT_KEYS.map(key => {
+    const map = {};
+    bots[key].yesterday.forEach(d => map[d.hour] = d.pnl);
+    return {
+      label: bots[key].name,
+      data: hours.map(h => map[h] || 0),
+      backgroundColor: BOT_COLORS[key] + 'bb',
+      borderColor: BOT_COLORS[key],
+      borderWidth: 1,
+    };
+  });
+
+  if (yesterdayChart) yesterdayChart.destroy();
+  yesterdayChart = new Chart(document.getElementById('yesterdayChart'), {
+    type: 'bar',
+    data: { labels: hours, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e0e0e0' } } },
+      scales: {
+        x: { ticks: { color: '#9ca3af' }, grid: { color: '#2a2d3a' } },
+        y: { ticks: { color: '#9ca3af' }, grid: { color: '#2a2d3a' } },
+      },
+    },
+  });
+}
+
+function renderTrades(trades) {
+  const tbody = document.getElementById('tradeTable');
+  if (!trades.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">거래 내역 없음</td></tr>';
+    return;
+  }
+  tbody.innerHTML = trades.map(t => `
+    <tr>
+      <td>${t.bot}</td>
+      <td>${t.ticker}</td>
+      <td class="${pnlClass(t.pnl)}">${t.pnl > 0 ? '+' : ''}${t.pnl}</td>
+      <td class="${pnlClass(t.pnl_rate)}">${t.pnl_rate > 0 ? '+' : ''}${t.pnl_rate}%</td>
+      <td><span class="badge ${t.result === 'win' ? 'badge-win' : 'badge-loss'}">${t.exit_reason}</span></td>
+      <td>${t.exit_at?.slice(0, 16) || '-'}</td>
+    </tr>`).join('');
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+    renderCards(data.bots);
+    renderCumulativeChart(data.bots);
+    renderYesterdayChart(data.bots);
+    renderTrades(data.recent_trades);
+    document.getElementById('lastUpdated').textContent =
+      '마지막 업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
