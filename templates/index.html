@@ -12,8 +12,8 @@
     .card-header { background: #1f1f1f; border-bottom: 2px solid #3a3a3a; border-radius: 12px 12px 0 0 !important; font-weight: 700; font-size: 1rem; color: #ffffff; letter-spacing: 0.03em; padding: 12px 16px; }
     .status-on  { color: #22c55e; font-weight: 700; }
     .status-off { color: #ef4444; font-weight: 700; }
-    .pnl-pos  { color: #22c55e; font-weight: 600; }
-    .pnl-neg  { color: #ef4444; font-weight: 600; }
+    .pnl-pos  { color: #ef4444; font-weight: 600; }
+    .pnl-neg  { color: #3b82f6; font-weight: 600; }
     .pnl-zero { color: #a0a0a0; }
     .badge-win  { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
     .badge-loss { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
@@ -22,7 +22,7 @@
     .table td { border-color: #2e2e2e; font-size: 0.88rem; background: #161616; color: #f0f0f0; padding: 10px 12px; }
     .table-hover tbody tr:hover td { background: #222222; }
     .refresh-info { color: #9ca3af; font-size: 0.8rem; }
-    h5.bot-name { font-size: 1.1rem; margin-bottom: 0; color: #ffffff; }
+    h5.bot-name { font-size: 1.1rem; margin-bottom: 0; font-weight: 700; }
     .stat-label { color: #9ca3af; font-size: 0.78rem; margin-bottom: 2px; }
     .stat-value { font-size: 1.15rem; font-weight: 700; color: #ffffff; }
     .position-badge { background: #1e3a5f; color: #93c5fd; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid #3b82f6; }
@@ -77,7 +77,8 @@
 </div>
 
 <script>
-const BOT_COLORS = { coin: '#f59e0b', stock: '#3b82f6', us: '#8b5cf6' };
+const BOT_COLORS  = { coin: '#f59e0b', stock: '#3b82f6', us: '#8b5cf6' };
+const BOT_NAME_COLOR = { '코인봇': '#f59e0b', '국장봇': '#3b82f6', '미장봇': '#8b5cf6' };
 const BOT_KEYS   = ['coin', 'stock', 'us'];
 let cumulativeChart, yesterdayChart;
 
@@ -105,7 +106,7 @@ function renderCards(bots) {
       <div class="col-md-4">
         <div class="card h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="bot-name">${b.name}</h5>
+            <h5 class="bot-name" style="color:${BOT_COLORS[key]}">${b.name}</h5>
             <span class="${b.running ? 'status-on' : 'status-off'}">${b.running ? '● ON' : '● OFF'}</span>
           </div>
           <div class="card-body">
@@ -124,10 +125,10 @@ function renderCards(bots) {
               </div>
             </div>
             <div class="d-flex justify-content-between align-items-center" style="font-size:0.82rem">
-              <span class="text-muted">총 ${s.total}회 (${s.win}승 ${s.loss}패)</span>
+              <span style="color:#ffffff">총 ${s.total}회 (${s.win}승 ${s.loss}패)</span>
             </div>
             <div class="mt-2">
-              <span class="stat-label me-2">보유</span>${posHtml}
+              <span class="stat-label me-2">보유</span><span style="color:#ffffff">${posHtml}</span>
             </div>
           </div>
         </div>
@@ -212,14 +213,15 @@ function renderTrades(trades) {
     const pnlStr = isUs
       ? `${t.pnl > 0 ? '+' : ''}$${Math.abs(t.pnl).toFixed(2)}`
       : `${t.pnl > 0 ? '+' : ''}${t.pnl.toLocaleString()}원`;
+    const botColor = BOT_NAME_COLOR[t.bot] || '#ffffff';
     return `
     <tr>
-      <td>${t.bot}</td>
-      <td>${t.ticker}</td>
+      <td style="color:${botColor};font-weight:600">${t.bot}</td>
+      <td style="color:#ffffff">${t.ticker}</td>
       <td class="${pnlClass(t.pnl)}">${pnlStr}</td>
       <td class="${pnlClass(t.pnl_rate)}">${t.pnl_rate > 0 ? '+' : ''}${t.pnl_rate}%</td>
       <td><span class="badge ${t.result === 'win' ? 'badge-win' : 'badge-loss'}">${t.exit_reason}</span></td>
-      <td>${t.exit_at?.slice(0, 16) || '-'}</td>
+      <td style="color:#ffffff">${t.exit_at?.slice(0, 16) || '-'}</td>
     </tr>`;
   }).join('');
 }
