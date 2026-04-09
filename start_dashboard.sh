@@ -1,5 +1,5 @@
 #!/bin/bash
-pkill -f "dashboard/app.py" 2>/dev/null
+pkill -f "python3 app.py" 2>/dev/null
 sleep 1
 cd ~/dashboard
 nohup python3 app.py > dashboard.log 2>&1 &
