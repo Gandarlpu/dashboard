@@ -4,6 +4,7 @@
 import os
 import sqlite3
 import subprocess
+import time
 from datetime import datetime, timedelta
 
 import pytz
@@ -38,6 +39,7 @@ TICKER_COL  = {"coin": "ticker", "stock": "stock_code", "us": "stock_code"}
 # ── 유틸 ──────────────────────────────────────────────────────────
 
 def is_running(bot: str) -> bool:
+    # PID 파일로 확인
     try:
         with open(PID[bot]) as f:
             pid = int(f.read().strip())
@@ -45,9 +47,10 @@ def is_running(bot: str) -> bool:
         return True
     except Exception:
         pass
+    # 폴백: 로그 파일 최근 수정 시간 (3분 이내면 실행 중)
+    log_path = f"/home/park722117/{BOT_DIR[bot]}/bot.log"
     try:
-        r = subprocess.run(["pgrep", "-f", f"{BOT_DIR[bot]}/main.py"], capture_output=True)
-        return r.returncode == 0
+        return (time.time() - os.path.getmtime(log_path)) < 180
     except Exception:
         return False
 
