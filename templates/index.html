@@ -99,8 +99,8 @@ function renderCards(bots) {
     const s = b.stats;
     const currency = key === 'us' ? 'usd' : 'krw';
     const posHtml = b.positions.length === 0
-      ? '<span class="text-muted" style="font-size:0.8rem">없음</span>'
-      : b.positions.map(p => `<span class="position-badge me-1">${p.ticker}</span>`).join('');
+      ? '<span style="color:#ffffff;font-size:0.8rem">없음</span>'
+      : b.positions.map(p => `<span class="position-badge me-1" style="color:#ffffff">${p.ticker}</span>`).join('');
 
     container.innerHTML += `
       <div class="col-md-4">
