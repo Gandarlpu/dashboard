@@ -47,10 +47,10 @@ def is_running(bot: str) -> bool:
         return True
     except Exception:
         pass
-    # 폴백: 로그 파일 최근 수정 시간 (3분 이내면 실행 중)
+    # 폴백: 로그 파일 최근 수정 시간 (15분 이내면 실행 중)
     log_path = f"/home/park722117/{BOT_DIR[bot]}/bot.log"
     try:
-        return (time.time() - os.path.getmtime(log_path)) < 180
+        return (time.time() - os.path.getmtime(log_path)) < 900
     except Exception:
         return False
 
