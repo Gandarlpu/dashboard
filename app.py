@@ -129,6 +129,26 @@ def get_recent_trades(limit: int = 20) -> list:
             f"FROM trade_history ORDER BY exit_at DESC LIMIT ?",
             (limit,)
         )
+        if not rows:
+            # theme 컬럼 없는 구버전 DB 폴백
+            rows = query(
+                bot,
+                f"SELECT {tc}, pnl, pnl_rate, exit_at, exit_reason, result "
+                f"FROM trade_history ORDER BY exit_at DESC LIMIT ?",
+                (limit,)
+            )
+            for r in rows:
+                all_trades.append({
+                    "bot": BOT_NAMES[bot],
+                    "ticker": r[0],
+                    "pnl": round(r[1], 2),
+                    "pnl_rate": round(r[2], 2),
+                    "exit_at": r[3],
+                    "exit_reason": r[4],
+                    "result": r[5],
+                    "theme": "",
+                })
+            continue
         for r in rows:
             all_trades.append({
                 "bot": BOT_NAMES[bot],
