@@ -65,7 +65,7 @@
         <table class="table table-hover mb-0">
           <thead>
             <tr>
-              <th>봇</th><th>종목</th><th>손익</th><th>손익률</th><th>청산사유</th><th>시각</th>
+              <th>봇</th><th>종목</th><th>손익</th><th>손익률</th><th>청산사유</th><th>테마</th><th>시각</th>
             </tr>
           </thead>
           <tbody id="tradeTable"></tbody>
@@ -205,7 +205,7 @@ function renderYesterdayChart(bots) {
 function renderTrades(trades) {
   const tbody = document.getElementById('tradeTable');
   if (!trades.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">거래 내역 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">거래 내역 없음</td></tr>';
     return;
   }
   tbody.innerHTML = trades.map(t => {
@@ -221,6 +221,7 @@ function renderTrades(trades) {
       <td class="${pnlClass(t.pnl)}">${pnlStr}</td>
       <td class="${pnlClass(t.pnl_rate)}">${t.pnl_rate > 0 ? '+' : ''}${t.pnl_rate}%</td>
       <td><span class="badge ${t.result === 'win' ? 'badge-win' : 'badge-loss'}">${t.exit_reason}</span></td>
+      <td style="color:#a78bfa;font-size:0.82em">${t.theme || '-'}</td>
       <td style="color:#ffffff">${t.exit_at?.slice(0, 16) || '-'}</td>
     </tr>`;
   }).join('');

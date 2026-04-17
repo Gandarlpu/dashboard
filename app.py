@@ -125,7 +125,7 @@ def get_recent_trades(limit: int = 20) -> list:
         tc = TICKER_COL[bot]
         rows = query(
             bot,
-            f"SELECT {tc}, pnl, pnl_rate, exit_at, exit_reason, result "
+            f"SELECT {tc}, pnl, pnl_rate, exit_at, exit_reason, result, COALESCE(theme, '') "
             f"FROM trade_history ORDER BY exit_at DESC LIMIT ?",
             (limit,)
         )
@@ -138,6 +138,7 @@ def get_recent_trades(limit: int = 20) -> list:
                 "exit_at": r[3],
                 "exit_reason": r[4],
                 "result": r[5],
+                "theme": r[6],
             })
     all_trades.sort(key=lambda x: x["exit_at"], reverse=True)
     return all_trades[:limit]
