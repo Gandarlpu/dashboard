@@ -26,6 +26,11 @@
     .stat-label { color: #9ca3af; font-size: 0.78rem; margin-bottom: 2px; }
     .stat-value { font-size: 1.15rem; font-weight: 700; color: #ffffff; }
     .position-badge { background: #1e3a5f; color: #93c5fd; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid #3b82f6; }
+    .pos-table { font-size: 0.74rem; width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .pos-table th { color: #6b7280; font-weight: 500; padding: 4px 6px; border-bottom: 1px solid #2e2e2e; text-align: right; }
+    .pos-table th:first-child { text-align: left; }
+    .pos-table td { padding: 5px 6px; border-bottom: 1px solid #1e1e1e; text-align: right; color: #e5e7eb; }
+    .pos-table td:first-child { text-align: left; color: #ffffff; font-weight: 600; }
     h4 { color: #ffffff; font-weight: 700; }
   </style>
 </head>
@@ -98,9 +103,29 @@ function renderCards(bots) {
     const b = bots[key];
     const s = b.stats;
     const currency = key === 'us' ? 'usd' : 'krw';
+    const isUs = key === 'us';
+    const fmt = (v) => v == null ? '—' : isUs ? `$${v.toFixed(2)}` : v.toLocaleString();
     const posHtml = b.positions.length === 0
-      ? '<span style="color:#ffffff;font-size:0.8rem">없음</span>'
-      : b.positions.map(p => `<span class="position-badge me-1" style="color:#ffffff">${p.name}</span>`).join('');
+      ? '<span style="color:#9ca3af;font-size:0.8rem">없음</span>'
+      : `<table class="pos-table">
+          <thead><tr>
+            <th>종목</th><th>매입가</th><th>현재가</th><th>수익률</th><th>손절가</th><th>익절가</th>
+          </tr></thead>
+          <tbody>
+            ${b.positions.map(p => {
+              const rateClass = p.pnl_rate == null ? '' : p.pnl_rate > 0 ? 'pnl-pos' : p.pnl_rate < 0 ? 'pnl-neg' : 'pnl-zero';
+              const rateStr = p.pnl_rate == null ? '—' : `${p.pnl_rate > 0 ? '+' : ''}${p.pnl_rate}%`;
+              return `<tr>
+                <td>${p.name}</td>
+                <td>${fmt(p.avg_buy_price)}</td>
+                <td>${fmt(p.current_price)}</td>
+                <td class="${rateClass}">${rateStr}</td>
+                <td style="color:#ef4444">${fmt(p.stop_loss_price)}</td>
+                <td style="color:#22c55e">${fmt(p.take_profit_price)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
 
     container.innerHTML += `
       <div class="col-md-4">
@@ -127,8 +152,9 @@ function renderCards(bots) {
             <div class="d-flex justify-content-between align-items-center" style="font-size:0.82rem">
               <span style="color:#ffffff">총 ${s.total}회 (${s.win}승 ${s.loss}패)</span>
             </div>
-            <div class="mt-2">
-              <span class="stat-label me-2">보유</span><span style="color:#ffffff">${posHtml}</span>
+            <div class="mt-3">
+              <span class="stat-label">보유 종목 (${b.positions.length})</span>
+              ${posHtml}
             </div>
           </div>
         </div>

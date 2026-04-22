@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 
 import pytz
+import requests as _req
 from flask import Flask, jsonify, render_template
 
 # 한국 주식 종목명 캐시 (코드 → 이름)
@@ -35,6 +36,40 @@ def _resolve_name(bot: str, ticker: str) -> str:
     if bot == "stock":
         return _get_krx_name(ticker)         # 005930 → 삼성전자
     return ticker
+
+_price_cache: dict = {}
+_PRICE_TTL = 60  # 1분 캐시
+
+def _fetch_current_price(bot: str, ticker: str):
+    key = (bot, ticker)
+    cached = _price_cache.get(key)
+    if cached and time.time() - cached[1] < _PRICE_TTL:
+        return cached[0]
+    price = None
+    try:
+        if bot == "coin":
+            r = _req.get(f"https://api.upbit.com/v1/ticker?markets={ticker}", timeout=3)
+            data = r.json()
+            price = data[0]["trade_price"] if data else None
+        elif bot == "us":
+            symbol = ticker.split(":")[-1]
+            r = _req.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d",
+                headers={"User-Agent": "Mozilla/5.0"}, timeout=4
+            )
+            price = r.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
+        elif bot == "stock":
+            r = _req.get(
+                f"https://m.stock.naver.com/api/stock/{ticker}/basic",
+                headers={"User-Agent": "Mozilla/5.0"}, timeout=3
+            )
+            raw = r.json().get("closePrice") or r.json().get("stockEndPrice") or ""
+            price = float(str(raw).replace(",", "")) if raw else None
+    except Exception:
+        pass
+    if price is not None:
+        _price_cache[key] = (price, time.time())
+    return price
 
 app = Flask(__name__)
 
@@ -120,10 +155,29 @@ def get_today_pnl(bot: str) -> float:
 
 def get_positions(bot: str) -> list:
     tc = TICKER_COL[bot]
-    rows = query(bot, f"SELECT {tc}, avg_buy_price, volume, bought_at, buy_amount FROM open_positions")
-    return [{"ticker": r[0], "name": _resolve_name(bot, r[0]),
-             "avg_buy_price": r[1], "volume": r[2],
-             "bought_at": r[3], "buy_amount": round(r[4], 2)} for r in rows]
+    rows = query(
+        bot,
+        f"SELECT {tc}, avg_buy_price, volume, bought_at, buy_amount, "
+        f"stop_loss_price, take_profit_price FROM open_positions"
+    )
+    result = []
+    for r in rows:
+        ticker, avg_buy = r[0], r[1]
+        current = _fetch_current_price(bot, ticker)
+        pnl_rate = round((current - avg_buy) / avg_buy * 100, 2) if current and avg_buy else None
+        result.append({
+            "ticker": ticker,
+            "name": _resolve_name(bot, ticker),
+            "avg_buy_price": avg_buy,
+            "volume": r[2],
+            "bought_at": r[3],
+            "buy_amount": round(r[4], 2),
+            "stop_loss_price": r[5],
+            "take_profit_price": r[6],
+            "current_price": current,
+            "pnl_rate": pnl_rate,
+        })
+    return result
 
 
 def get_cumulative(bot: str) -> list:
