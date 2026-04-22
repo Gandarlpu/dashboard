@@ -10,6 +10,32 @@ from datetime import datetime, timedelta
 import pytz
 from flask import Flask, jsonify, render_template
 
+# 한국 주식 종목명 캐시 (코드 → 이름)
+_krx_name_cache: dict = {}
+
+def _get_krx_name(code: str) -> str:
+    """한국 주식 코드 → 종목명 (pykrx, 캐시)"""
+    if code in _krx_name_cache:
+        return _krx_name_cache[code]
+    try:
+        from pykrx import stock as krx
+        name = krx.get_market_ticker_name(code)
+        if name:
+            _krx_name_cache[code] = name
+            return name
+    except Exception:
+        pass
+    return code
+
+def _resolve_name(bot: str, ticker: str) -> str:
+    if bot == "coin":
+        return ticker.replace("KRW-", "")   # KRW-BTC → BTC
+    if bot == "us":
+        return ticker.split(":")[-1]         # NAS:NVDA → NVDA
+    if bot == "stock":
+        return _get_krx_name(ticker)         # 005930 → 삼성전자
+    return ticker
+
 app = Flask(__name__)
 
 KST = pytz.timezone("Asia/Seoul")
@@ -95,7 +121,8 @@ def get_today_pnl(bot: str) -> float:
 def get_positions(bot: str) -> list:
     tc = TICKER_COL[bot]
     rows = query(bot, f"SELECT {tc}, avg_buy_price, volume, bought_at, buy_amount FROM open_positions")
-    return [{"ticker": r[0], "avg_buy_price": r[1], "volume": r[2],
+    return [{"ticker": r[0], "name": _resolve_name(bot, r[0]),
+             "avg_buy_price": r[1], "volume": r[2],
              "bought_at": r[3], "buy_amount": round(r[4], 2)} for r in rows]
 
 
@@ -141,6 +168,7 @@ def get_recent_trades(limit: int = 20) -> list:
                 all_trades.append({
                     "bot": BOT_NAMES[bot],
                     "ticker": r[0],
+                    "name": _resolve_name(bot, r[0]),
                     "pnl": round(r[1], 2),
                     "pnl_rate": round(r[2], 2),
                     "exit_at": r[3],
@@ -153,6 +181,7 @@ def get_recent_trades(limit: int = 20) -> list:
             all_trades.append({
                 "bot": BOT_NAMES[bot],
                 "ticker": r[0],
+                "name": _resolve_name(bot, r[0]),
                 "pnl": round(r[1], 2),
                 "pnl_rate": round(r[2], 2),
                 "exit_at": r[3],

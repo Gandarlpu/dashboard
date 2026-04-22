@@ -100,7 +100,7 @@ function renderCards(bots) {
     const currency = key === 'us' ? 'usd' : 'krw';
     const posHtml = b.positions.length === 0
       ? '<span style="color:#ffffff;font-size:0.8rem">없음</span>'
-      : b.positions.map(p => `<span class="position-badge me-1" style="color:#ffffff">${p.ticker}</span>`).join('');
+      : b.positions.map(p => `<span class="position-badge me-1" style="color:#ffffff">${p.name}</span>`).join('');
 
     container.innerHTML += `
       <div class="col-md-4">
@@ -217,7 +217,7 @@ function renderTrades(trades) {
     return `
     <tr>
       <td style="color:${botColor};font-weight:600">${t.bot}</td>
-      <td style="color:#ffffff">${t.ticker}</td>
+      <td style="color:#ffffff">${t.name}</td>
       <td class="${pnlClass(t.pnl)}">${pnlStr}</td>
       <td class="${pnlClass(t.pnl_rate)}">${t.pnl_rate > 0 ? '+' : ''}${t.pnl_rate}%</td>
       <td><span class="badge ${t.result === 'win' ? 'badge-win' : 'badge-loss'}">${t.exit_reason}</span></td>
